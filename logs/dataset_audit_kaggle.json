@@ -1,0 +1,52 @@
+{
+  "train": {
+    "images": 9803,
+    "masks": 9803,
+    "ok": true,
+    "label_pixel_counts": {
+      "0": 588699440,
+      "1": 840365183,
+      "2": 179195730,
+      "3": 13786293,
+      "255": 947750986
+    }
+  },
+  "val": {
+    "images": 1192,
+    "masks": 1192,
+    "ok": true,
+    "label_pixel_counts": {
+      "0": 67509894,
+      "1": 103205191,
+      "2": 21865497,
+      "3": 1673738,
+      "255": 118221328
+    }
+  },
+  "test_msl": {
+    "images": 311,
+    "masks": 311,
+    "ok": true,
+    "label_pixel_counts": {
+      "0": 22179115,
+      "1": 14967305,
+      "2": 11185088,
+      "3": 95492,
+      "255": 33099784
+    }
+  },
+  "test_mer": {
+    "images": 195,
+    "masks": 195,
+    "ok": true,
+    "label_pixel_counts": {
+      "0": 15740966,
+      "1": 7453355,
+      "2": 8600317,
+      "3": 324580,
+      "255": 18998862
+    }
+  },
+  "all_data_csv_checks_passed": true,
+  "frozen_split_verified": false
+}

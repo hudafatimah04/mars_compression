@@ -1,0 +1,5 @@
+{
+  "structural_check": "PASS (rows, disjoint filenames, 3-sol buffers: val min 3.006, msl min 3.000)",
+  "csv_md5_vs_json": "PASS all 4, after dropping img_512 and mask_512 columns and re-serialising with pandas to_csv(index=False)",
+  "mer": "separate rover; sclk buffer not applicable"
+}
