@@ -1,120 +1,162 @@
-[README (1).md](https://github.com/user-attachments/files/34762391/README.1.md)
 # Mars Terrain Compression — Research Project
 
-**Goal:** Compare **JPEG2000**, **CompressAI reconstruction-only**, and **CompressAI task-aware** image compression for (1) Mars image reconstruction quality and (2) four-class terrain segmentation at **matched actual bits per pixel (bpp)**. Cross-rover compression experiments are **optional later work**.
+## Overview
 
-**Status:** Dataset preprocessing, SegFormer training, checkpoint freezing, and uncompressed baseline testing are complete. **Compression experiments are not yet complete.**
+This project compares three image-compression methods for Martian terrain imagery:
 
-## Where everything is stored
+1. **JPEG2000** — conventional image compression.
+2. **CompressAI reconstruction-only** — learned image compression optimised for reconstruction.
+3. **CompressAI task-aware** — learned image compression additionally optimised for terrain segmentation.
 
-**GitHub (this private repository):** `https://github.com/hudafatimah04/mars_compression`
+**Primary objectives:** Compare reconstructed-image quality (PSNR, MS-SSIM) and terrain-segmentation performance (mIoU) at matched **actual bits per pixel (bpp)**.
 
-- `README.md` — this setup guide.
-- `Mars_Terrain_Compression_PRD_v1_0.pdf` — project requirements and literature review.
-- `Mars_Compression_Teammate_Handover_*.md` — teammate's implementation handover.
-- `Mars_Terrain_Research_Technical_Roadmap_*.pdf` — completed-work explanation for evaluators.
-- `shared_compression_protocol_PROPOSED.json` — **proposed, not yet approved** shared bitrate/metric settings.
-- `baseline_final_eval_cell.py` — recorded one-time baseline evaluation code; **do not rerun the completed test**.
-- `notebooks/` — four notebooks in development order: **data audit/preprocessing**, **initial SegFormer checks**, **learning-rate pilot**, **final 20-epoch SegFormer training/freezing/evaluation**. These are historical records, not a single run-all workflow.
-- `results/baseline/` — add the small `final_test_results.json` from the complete backup here for convenient reference.
+**Current status:** AI4Mars preprocessing, data verification, SegFormer training, checkpoint freezing and uncompressed baseline evaluation are complete. Compression experiments are the next phase. Cross-rover compression analysis is optional later work.
 
-**Kaggle dataset:** `mars-terrain-v3-512` (owner: `hudafatimah`). Request access if private; in your Kaggle notebook, use **Add Input** to attach it. The mounted location can differ by notebook; inspect `/kaggle/input/` rather than assuming an absolute path.
+## Project storage
 
-| Kaggle asset | Contents / use |
+### GitHub — Code, documentation and experimental records
+
+Repository: https://github.com/hudafatimah04/mars_compression
+
+| Location | Description |
 |---|---|
-| `dataset_v3_512_train_part1.zip`, `part2.zip`, `part3.zip` | Prepared 512×512 grayscale training images and segmentation masks (9,803 image/mask pairs in total). |
-| `dataset_v3_512_val_test_csv.zip` | Validation (1,192), MSL test (311), MER test (195), corresponding masks, CSVs and preprocessing metadata. |
-| `split_v3_FROZEN.json` | Frozen split definition; **do not regenerate or change**. |
-| `mars_segformer_trained_model.zip` | **Small model-sharing package**: frozen epoch-16 SegFormer, metadata, baseline config and core Python code. |
-| `backup_baseline_final_evaluated.zip` | **Full project recovery archive**: checkpoints, source modules, config, frozen split, training/validation logs, confusion matrices, training plots, and final baseline test results. Not needed for routine inference. |
+| `notebooks/` | Four notebooks: data preparation, initial SegFormer development, learning-rate pilot, final SegFormer training and evaluation |
+| `code/` | Shared dataset loader, model, checkpoint, deterministic training, W&B and LR-pilot utilities |
+| `configs/` | Formal learning-rate pilot configuration |
+| `splits/` | Final V3 train/validation/MSL/MER split CSVs |
+| `logs/` | Pilot training logs, validation logs and dataset/split verification |
+| `results/lr_pilot/` | Three candidate experiments, verification and final LR selection |
+| `results/baseline/` | Official uncompressed SegFormer test results |
+| `results/historical/` | Earlier resolution-feasibility investigation, if retained |
+| `figures/historical_v2/` | Historical visual checks, not final V3 results |
+| `baseline_final_eval_cell.py` | Archived final baseline evaluation code; do not rerun completed tests |
+| `shared_compression_protocol_PROPOSED.json` | Proposed bitrate and metric agreement, not yet approved |
 
-Kaggle's Data Explorer may display ZIP contents as folders. Either way, the original archive names identify the assets.
+The repository also includes the **PRD**, **teammate handover** and **technical roadmap**.
 
-## Which SegFormer ZIP should I use?
+### Kaggle — Dataset and trained model
 
-### `mars_segformer_trained_model.zip` — use this for compression experiments
+Dataset: `mars-terrain-v3-512`, maintained by `hudafatimah`.
 
-Contains these **nine verified paths**:
+Attach it through **Kaggle → Add Input** after receiving dataset access.
 
-```text
-checkpoints/baseline/frozen_best_epoch16.pt
-checkpoints/baseline/baseline_frozen.json
-configs/baseline_protocol.json
-code/mars_common.py
-code/ckpt_utils.py
-code/mars_det.py
-code/tracking.py
-code/recovery.py
-code/baseline_train.py
-```
+| Kaggle asset | Purpose |
+|---|---|
+| `dataset_v3_512_train_part1.zip` | First training-data package |
+| `dataset_v3_512_train_part2.zip` | Second training-data package |
+| `dataset_v3_512_train_part3.zip` | Third training-data package |
+| `dataset_v3_512_val_test_csv.zip` | Validation/test images and masks, CSVs and preprocessing metadata |
+| `split_v3_FROZEN.json` | Frozen data-split definition |
+| `mars_segformer_trained_model.zip` | Frozen model, configuration and essential Python modules |
+| `backup_baseline_final_evaluated.zip` | Full baseline project recovery archive, including training history and results |
 
-The frozen checkpoint is the **same** for JPEG2000 and both CompressAI methods. Do not retrain or replace it. The core loader and metrics are in `code/mars_common.py` (`MarsSeg`, `SegWrap`, `evaluate`). It expects a one-channel grayscale tensor, repeats/normalises it internally, and produces four-class segmentation logits.
+## Prepared dataset
 
-**Model verification:** epoch **16**, iteration **19,600**, validation mIoU4 **0.838503**. Checkpoint SHA256:
+**AI4Mars merged v0.6**, grayscale images and masks at 512 × 512 resolution, stored as lossless PNG.
+
+| Split | Images | Use |
+|---|---:|---|
+| `train` | 9,803 | Curiosity training |
+| `val` | 1,192 | Curiosity validation and model selection |
+| `test_msl` | 311 | Expert-labelled Curiosity final testing |
+| `test_mer` | 195 | Expert-labelled Spirit/Opportunity testing |
+
+Terrain labels: `0=soil`, `1=bedrock`, `2=sand`, `3=big rock`, `255=ignore`.
+
+Never regenerate or modify the frozen splits. Do not use either test set for codec training, hyperparameter tuning or checkpoint selection.
+
+## SegFormer baseline
+
+Architecture: **SegFormer MiT-B0**, pretrained encoder `nvidia/mit-b0`, four-class segmentation head.
+
+Training: **20 epochs**, batch size 8, AdamW, selected learning rate `1e-4`, seed 42, cosine learning-rate decay and FP16 AMP.
+
+Best checkpoint: **epoch 16**, iteration **19,600**, selected using validation mIoU4.
+
+The same frozen model must be used to evaluate all three compression methods.
+
+### Model-sharing ZIP
+
+Extract `mars_segformer_trained_model.zip` from Kaggle. Important contents:
+
+- `checkpoints/baseline/frozen_best_epoch16.pt` — official model
+- `checkpoints/baseline/baseline_frozen.json` — checkpoint metadata
+- `configs/baseline_protocol.json` — model-training configuration
+- `code/mars_common.py` — dataset loading, SegFormer and evaluation
+- `code/ckpt_utils.py`, `mars_det.py`, `tracking.py`, `recovery.py`, `baseline_train.py` — supporting implementation
+
+**Checkpoint SHA256:**
 
 `afb9b155e07c617ab69cfa29455beda9318605b0afcec81e07f558a48bcbbda6`
 
-### `backup_baseline_final_evaluated.zip` — use this for logs and recovery
+Do not retrain or replace SegFormer. Load this trusted checkpoint using the existing project code.
 
-After extracting the backup, look under its `results/baseline/` directory:
+### Full evaluated backup
 
-```text
-results/baseline/final_test_results.json    # official uncompressed expert-test metrics
-results/baseline/final_test_progress.json   # completion journal
-results/baseline/train_log.csv              # training curves
-results/baseline/validation_log.csv         # epoch-wise validation results
-results/baseline/confusion_matrices/        # confusion matrices
-results/baseline/training_analysis/         # plots and reports
-results/baseline/wandb_run.json             # W&B run reference
-```
+`backup_baseline_final_evaluated.zip` is intended for recovery and historical results, not routine inference.
 
-Other project directories include `checkpoints/`, `code/`, `configs/`, `splits/`, and `logs/`. The recovery archive is **not** a replacement for the separate AI4Mars image/mask ZIPs.
+Its key files are located under `results/baseline/`:
 
-## Teammate setup (Kaggle)
+- `final_test_results.json` — official uncompressed test metrics
+- `final_test_progress.json` — completed evaluation record
+- `train_log.csv` and `validation_log.csv` — training history
+- `confusion_matrices/` — segmentation confusion matrices
+- `training_analysis/` — validation and training plots
+- `wandb_run.json` — W&B run reference
 
-1. Get access to this **private GitHub repo** and the **Kaggle dataset** `mars-terrain-v3-512`; in a new Kaggle notebook, click **Add Input** to attach the dataset.
-2. Restore the four prepared dataset parts into `/tmp/mars_data/` using the data-staging cells in the baseline notebooks. Required folders: `train/`, `val/`, `test_msl/`, `test_mer/` (each with `img/` and `mask/`), plus the four split CSV files. Check counts: **9,803 / 1,192 / 311 / 195**. CSVs must retain `img_512` and `mask_512` columns.
-3. Locate `mars_segformer_trained_model.zip` under `/kaggle/input/`. If it appears as a directory, use that directly; otherwise extract it to `/kaggle/working/mars_model/`. Locate the directory containing `code/`, `configs/`, and `checkpoints/`.
-4. Load the **frozen model** (see below); do not run training again. The first model initialization may download `nvidia/mit-b0` from Hugging Face, so allow internet or use its cached weights.
+It also contains the project checkpoints, code, configuration and frozen split.
 
-```python
-from pathlib import Path
-import sys, torch, hashlib
+## Recorded baseline results
 
-ROOT = Path('/kaggle/working/mars_model')  # adjust if auto-extracted elsewhere
-sys.path.insert(0, str(ROOT / 'code'))
-import mars_common as mc  # default dataset root: /tmp/mars_data
-
-ckpt = ROOT / 'checkpoints/baseline/frozen_best_epoch16.pt'
-sha = 'afb9b155e07c617ab69cfa29455beda9318605b0afcec81e07f558a48bcbbda6'
-assert hashlib.sha256(ckpt.read_bytes()).hexdigest() == sha
-model = mc.new_model()
-# Load only the team's trusted PyTorch checkpoint.
-model.load_state_dict(torch.load(ckpt, map_location='cpu', weights_only=False)['model'])
-model.eval()
-assert len(mc.MarsSeg('train')) == 9803
-print('Ready')
-```
-
-The segmentation data loader, preprocessing, and metrics are in `code/mars_common.py`. Match package versions to the baseline notebooks and record your runtime environment. `/tmp` and `/kaggle/working` are **temporary**; save codec checkpoints separately.
-
-## Recorded uncompressed baseline results
-
-| Metric | Validation (Curiosity) | Expert MSL test (311) | Expert MER test (195) |
+| Metric | Validation | MSL test | MER test |
 |---|---:|---:|---:|
-| mIoU4 | **0.838503** (best epoch 16) | **0.676215** | **0.700983** |
-| mIoU3 | 0.935317 (at epoch 16) | 0.864864 | 0.788847 |
+| mIoU4 | **0.838503** | **0.676215** | **0.700983** |
+| mIoU3 | 0.935317 | 0.864864 | 0.788847 |
 | Pixel accuracy | — | 0.927891 | 0.882720 |
 
-Read the full per-class results in **`results/baseline/final_test_results.json` inside the full backup**. These are **uncompressed SegFormer** results, **not JPEG2000 or CompressAI** results. Baseline W&B run: [view run](https://wandb.ai/hudafatimah-04-rv-college-of-engineering/mars-terrain-segmentation/runs/97ff64b1ad56d530). Local CSV/JSON files are the authoritative records.
+These values are for **uncompressed images**, not JPEG2000 or CompressAI.
 
-## Experiment ownership and rules
+### Learning-rate pilot
 
-- **Teammate A:** JPEG2000 compression, reconstruction metrics, and segmentation evaluation.
-- **Teammate B:** CompressAI reconstruction-only and task-aware compression, reconstruction metrics, and segmentation evaluation.
-- **Both:** agree on one image/channel policy, metric implementation, actual encoded-byte accounting and bitrate targets **before production runs**. Proposed core points: **0.125 / 0.25 / 0.5 bpp** (not yet locked). Compute `bpp = 8 × encoded_bytes / (512 × 512)` using the complete decodable bitstream. Compare methods at **matched actual** bpp.
-- Train and tune codecs with **Curiosity train/validation only**. `test_msl` is reserved for the one-time final compression comparison. `test_mer` remains reserved for optional later domain-shift experiments. Do **not** rerun or use the existing baseline test results to tune compressors.
-- Keep SegFormer, masks, splits, preprocessing and evaluation metrics unchanged. Report **PSNR, MS-SSIM, mIoU4, mIoU3, per-class IoU**, and actual bpp.
-- Log each experiment to **Weights & Biases (W&B)** and retain **local CSV/JSON, configs, plots and checkpoints**. Use Kaggle Secrets for credentials; never commit API keys.
+Three candidates were tested, each for four epochs:
 
-**Start with the PRD and teammate handover, then the proposed shared protocol.** Do not rerun all four baseline notebooks or retrain SegFormer to begin compression work.
+| Learning rate | Selection mIoU4 score |
+|---|---:|
+| `3e-5` | 0.779816 |
+| **`1e-4`** | **0.813566** |
+| `3e-4` | 0.791311 |
+
+The selected learning rate was **`1e-4`**. Full evidence is available in `results/lr_pilot/lr_selection.json`, candidate logs and verification reports.
+
+Baseline W&B run: https://wandb.ai/hudafatimah-04-rv-college-of-engineering/mars-terrain-segmentation/runs/97ff64b1ad56d530
+
+## Teammate setup
+
+1. Get access to this GitHub repository and the private Kaggle dataset.
+2. Create a Kaggle notebook and attach `mars-terrain-v3-512` using **Add Input**.
+3. Locate the dataset ZIPs under `/kaggle/input/`. Reconstruct the prepared dataset using the existing notebook staging procedure. The original baseline used `/tmp/mars_data/`.
+4. Verify the image/mask folders, CSVs and expected split counts.
+5. Locate and extract `mars_segformer_trained_model.zip`, if not already expanded by Kaggle.
+6. Add its `code/` directory to the Python path, verify the checkpoint SHA256 and load the frozen SegFormer using the existing model-loading utilities.
+7. Use the same segmentation preprocessing and metrics for every codec. Do not run the baseline notebooks from the beginning or repeat the completed expert-test evaluations.
+8. Save codec checkpoints, local logs and W&B records persistently; Kaggle runtime storage is temporary.
+
+## Compression experiments
+
+**Teammate A:** JPEG2000 compression, reconstructed-image evaluation and frozen-SegFormer inference.
+
+**Teammate B:** CompressAI reconstruction-only and task-aware training, encoding/decoding, reconstruction metrics and frozen-SegFormer evaluation.
+
+**Both teammates must agree before production runs** on the input-channel policy, codec architecture, metric implementations, byte accounting and bitrate targets.
+
+Proposed bitrate targets: **0.125, 0.25 and 0.5 bpp** — not yet locked.
+
+Actual bpp is calculated using the full decodable compressed bitstream:
+
+`bpp = (8 × encoded bytes) / (512 × 512)`
+
+Report actual bpp, PSNR, MS-SSIM, mIoU4, mIoU3 and per-class IoU. Log all experiments to **Weights & Biases** and retain local CSV/JSON/configuration files.
+
+**Important:** Development and checkpoint selection must use only the approved Curiosity train/validation partitions. Final compression testing occurs only after the protocol is frozen. MER compression evaluation remains optional.
+
+Read the PRD and teammate handover before implementing new codec experiments.
