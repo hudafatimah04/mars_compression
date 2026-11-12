@@ -1,0 +1,29 @@
+{
+ "tag": "lr3e-05",
+ "lr": 3e-05,
+ "all_checks_passed": true,
+ "checks": {
+  "summary status is completed, 4900 iterations done": true,
+  "summary config/plan/init hashes match the protocol": true,
+  "train CSV: iterations 25..4900 (every 25), each exactly once": true,
+  "train CSV: all losses finite": true,
+  "train CSV: LR follows the schedule (peak 3e-5, warmup 100, cosine to 5%)": true,
+  "train CSV: grad norms finite in >=95% of rows (sanity)": true,
+  "val CSV: iterations exactly 1225, 2450, 3675, 4900": true,
+  "val CSV: all losses and mIoU values finite": true,
+  "4 validation JSON files exist and record the right iterations": true,
+  "checkpoint: all required keys, iteration 4900, matching config hash": true,
+  "checkpoint: RNG states stored": true,
+  "no leftover .tmp files": true,
+  "summary carries rejected flag + reasons + rule": true
+ },
+ "config_hash": "4a07821ab0dcd5c7",
+ "ckpt_every_used": 500,
+ "rejected": false,
+ "primary_score_so_far": 0.7798156439561139,
+ "wandb_info_not_part_of_verdict": {
+  "connected": true,
+  "errors": 0
+ },
+ "verified_at": "2026-11-10 09:34:21"
+}
