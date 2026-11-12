@@ -25,10 +25,8 @@ Repository: https://github.com/hudafatimah04/mars_compression
 | `configs/` | Formal learning-rate pilot configuration |
 | `splits/` | Final V3 train/validation/MSL/MER split CSVs |
 | `logs/` | Pilot training logs, validation logs and dataset/split verification |
-| `results/lr_pilot/` | Three candidate experiments, verification and final LR selection |
-| `results/baseline/` | Official uncompressed SegFormer test results |
-| `results/historical/` | Earlier resolution-feasibility investigation, if retained |
-| `figures/historical_v2/` | Historical visual checks, not final V3 results |
+| `results` | Three candidate experiments, verification and final LR selection |
+| `results` | Official uncompressed SegFormer test results |
 | `baseline_final_eval_cell.py` | Archived final baseline evaluation code; do not rerun completed tests |
 | `shared_compression_protocol_PROPOSED.json` | Proposed bitrate and metric agreement, not yet approved |
 
