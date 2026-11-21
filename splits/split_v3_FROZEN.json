@@ -1,0 +1,30 @@
+{
+ "status": "FROZEN",
+ "rule": "val seed = min L1(val class mix, train class mix) over seeds 0-19; test mix never used",
+ "seed": 11,
+ "buffer_test_sols": 3,
+ "buffer_val_sols": 3,
+ "val_block_sols": 5,
+ "train_min_labeled": 0.3,
+ "test_min_labeled": 0.1,
+ "sol_seconds": 88775,
+ "note": "F#### is a site/drive counter, NOT a sol; buffers use SCLK time",
+ "files": {
+  "train": {
+   "rows": 9803,
+   "md5": "8d02c9c95be90e4a89663a84c3fd82b7"
+  },
+  "val": {
+   "rows": 1192,
+   "md5": "0a86468c938bf3009b6db117c881c38d"
+  },
+  "test_msl": {
+   "rows": 311,
+   "md5": "46a63b56c865a1d2c6c8bc13a90bdeaa"
+  },
+  "test_mer": {
+   "rows": 195,
+   "md5": "289521ca2a432d9cb63c6fb8138a5f41"
+  }
+ }
+}

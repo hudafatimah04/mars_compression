@@ -1,0 +1,100 @@
+{
+  "experiment": "Mars codec bitrate feasibility",
+  "status": "preliminary, not final codec comparison",
+  "dataset": "AI4Mars prepared 512x512 grayscale",
+  "split": "Curiosity validation",
+  "target_bpp": [
+    0.125,
+    0.25,
+    0.5
+  ],
+  "jpeg2000": {
+    "sample_count": 40,
+    "results": [
+      {
+        "target": 0.125,
+        "actual_bpp": 0.1229,
+        "psnr_db": 33.48
+      },
+      {
+        "target": 0.25,
+        "actual_bpp": 0.2482,
+        "psnr_db": 35.82
+      },
+      {
+        "target": 0.5,
+        "actual_bpp": 0.4968,
+        "psnr_db": 38.72
+      }
+    ]
+  },
+  "compressai": {
+    "purpose": "Pretrained CompressAI feasibility pilot",
+    "architecture": "bmshj2018_factorized",
+    "samples": 12,
+    "seed": 42,
+    "grayscale_policy": "repeat input to RGB; mean decoded RGB; round to 8-bit",
+    "rate_policy": "actual serialized bitstream including framing metadata",
+    "results": [
+      {
+        "quality": 1,
+        "mean_bpp": 0.07490030924479167,
+        "mean_psnr_db": 32.60186498814753,
+        "min_bpp": 0.0614013671875,
+        "max_bpp": 0.1163330078125
+      },
+      {
+        "quality": 2,
+        "mean_bpp": 0.113555908203125,
+        "mean_psnr_db": 33.65227024252125,
+        "min_bpp": 0.0853271484375,
+        "max_bpp": 0.1839599609375
+      },
+      {
+        "quality": 3,
+        "mean_bpp": 0.170867919921875,
+        "mean_psnr_db": 34.80528424794014,
+        "min_bpp": 0.1199951171875,
+        "max_bpp": 0.2841796875
+      },
+      {
+        "quality": 4,
+        "mean_bpp": 0.2594095865885417,
+        "mean_psnr_db": 36.21510239488977,
+        "min_bpp": 0.1715087890625,
+        "max_bpp": 0.431396484375
+      },
+      {
+        "quality": 5,
+        "mean_bpp": 0.3878682454427083,
+        "mean_psnr_db": 37.75345024531965,
+        "min_bpp": 0.2503662109375,
+        "max_bpp": 0.62548828125
+      },
+      {
+        "quality": 6,
+        "mean_bpp": 0.561279296875,
+        "mean_psnr_db": 39.35582770279158,
+        "min_bpp": 0.361083984375,
+        "max_bpp": 0.874267578125
+      },
+      {
+        "quality": 7,
+        "mean_bpp": 0.8093058268229166,
+        "mean_psnr_db": 41.3016306414948,
+        "min_bpp": 0.5211181640625,
+        "max_bpp": 1.2100830078125
+      },
+      {
+        "quality": 8,
+        "mean_bpp": 1.1355997721354167,
+        "mean_psnr_db": 43.40700505023827,
+        "min_bpp": 0.7457275390625,
+        "max_bpp": 1.62744140625
+      }
+    ],
+    "training_performed": false
+  },
+  "conclusion": "Both methods demonstrated operation in the proposed low-bitrate range. Exact learned-codec rate matching remains to be calibrated.",
+  "warning": "JPEG2000 used 40 images and CompressAI used 12. Do not use these PSNR results to declare a winner."
+}

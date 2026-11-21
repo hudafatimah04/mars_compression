@@ -1,0 +1,23 @@
+{
+  "split": "val",
+  "checkpoint_sha256": "afb9b155e07c617ab69cfa29455beda9318605b0afcec81e07f558a48bcbbda6",
+  "epoch": 16,
+  "iteration": 19600,
+  "rule": "8 random + 4 big-rock (>=1% of labeled pixels) validation images with >=50% labeled pixels; RandomState(42); chosen from ground truth only, never by model performance",
+  "val_indices": [
+    868,
+    1168,
+    423,
+    795,
+    272,
+    964,
+    1164,
+    144,
+    846,
+    840,
+    337,
+    348
+  ],
+  "full_val_miou4": 0.8385030829983156,
+  "full_val_miou3": 0.9353173442452696
+}

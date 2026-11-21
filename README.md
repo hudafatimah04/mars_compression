@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/35219070/README.md)
 # Mars Terrain Compression — Research Project
 
 ## Overview
@@ -13,7 +12,7 @@ This project compares three image-compression methods for Martian terrain imager
 
 **Current status:** Dataset preparation, SegFormer training and uncompressed baseline evaluation are complete. The new Kaggle notebook reproduced the frozen model's uncompressed validation scores. JPEG2000 bitrate and reconstruction calibration is complete on all 1,192 validation images. Compressed-image segmentation, learned-codec calibration and the final comparison are pending.
 
-**Start here:** [Shared compression protocol v1.1 draft](documentation/shared_compression_protocol_v1.1.json). It records the fixed bitrate targets and the learned-codec settings still awaiting joint sign-off.
+**Start here:** [Shared compression protocol v1.1 draft](shared_compression_protocol_v1.1.json). It records the fixed bitrate targets and the learned-codec settings still awaiting joint sign-off.
 
 ## Project storage
 
@@ -25,16 +24,16 @@ Repository: https://github.com/hudafatimah04/mars_compression
 |---|---|
 | `notebooks/` | Data preparation, SegFormer development and evaluation, and the new codec feasibility and calibration notebook |
 | `code/` | Shared dataset loader, model, checkpoint, deterministic training, W&B and LR-pilot utilities |
-| `configs/` | Formal learning-rate pilot configuration |
-| `splits/` | Final V3 train/validation/MSL/MER split CSVs |
-| `logs/` | Pilot training logs, validation logs and dataset/split verification |
-| `results` | Three candidate experiments, verification and final LR selection |
-| `results` | Official uncompressed SegFormer test results |
+| [`configs/`](configs/) | Learning-rate pilot and full baseline training protocols |
+| [`splits/`](splits/) | Frozen split definition. Prepared image and mask manifests are supplied with the Kaggle dataset |
+| [`logs/`](logs/) | Dataset and split verification |
+| [LR pilot selection](results/lr_selection.json) | Candidate summaries, verification and selection |
+| [Uncompressed SegFormer test results](results/final_test_results.json) | Official historical baseline |
 | `baseline_final_eval_cell.py` | Archived final baseline evaluation code; do not rerun completed tests |
-| [Shared protocol v1.1 draft](documentation/shared_compression_protocol_v1.1.json) | Current bitrate, byte accounting, validation and evaluation rules |
-| [JPEG2000 validation calibration ZIP](results/jpeg2000_calibration.zip) | Per-image results, summary and reconstruction examples |
+| [Shared protocol v1.1 draft](shared_compression_protocol_v1.1.json) | Current bitrate, byte accounting, validation and evaluation rules |
+| [JPEG2000 validation calibration](results/jpeg2000_calibration/) | Per-image results, summary and reconstruction examples |
 
-The repository also includes the **PRD**, **teammate handover** and **technical roadmap**.
+The repository also includes the [PRD](Mars_Terrain_Compression_PRD_v1_0.pdf), [teammate handover](Mars_Compression_Teammate_Handover_2026-11-12.md), and [technical roadmap](Mars_Terrain_Research_Technical_Roadmap_Evaluator.pdf). Use the v1.1 draft for the current bitrate and evaluation rules.
 
 ### Kaggle — Dataset and trained model
 
@@ -51,6 +50,10 @@ Attach it through **Kaggle → Add Input** after receiving dataset access.
 | `split_v3_FROZEN.json` | Frozen data-split definition |
 | `mars_segformer_trained_model.zip` | Frozen model, configuration and essential Python modules |
 | `backup_baseline_final_evaluated.zip` | Full baseline project recovery archive, including training history and results |
+
+### Research website
+
+The [website source and setup instructions](website/README.md) are in `website/`. Repo collaborators can run it locally. A shared browser URL requires a protected deployment of this folder.
 
 ## Prepared dataset
 
@@ -75,7 +78,7 @@ Training: **20 epochs**, batch size 8, AdamW, selected learning rate `1e-4`, see
 
 Best checkpoint: **epoch 16**, iteration **19,600**, selected using validation mIoU4.
 
-The same frozen model must be used to evaluate all three compression methods.
+The same frozen model must be used to evaluate all three compression methods. See the [frozen checkpoint metadata](checkpoints/baseline/baseline_frozen.json) and [baseline training config](configs/baseline_protocol.json).
 
 ### Model-sharing ZIP
 
@@ -128,7 +131,7 @@ Three candidates were tested, each for four epochs:
 | **`1e-4`** | **0.813566** |
 | `3e-4` | 0.791311 |
 
-The selected learning rate was **`1e-4`**. Full evidence is available in `results/lr_pilot/lr_selection.json`, candidate logs and verification reports.
+The selected learning rate was **`1e-4`**. See the [selection record](results/lr_selection.json), the [candidate summaries](results/), and the [website chart source logs](website/data/source/logs/lr_pilot/).
 
 Baseline W&B run: https://wandb.ai/hudafatimah-04-rv-college-of-engineering/mars-terrain-segmentation/runs/97ff64b1ad56d530
 
@@ -149,7 +152,7 @@ Baseline W&B run: https://wandb.ai/hudafatimah-04-rv-college-of-engineering/mars
 
 The [Kaggle notebook](notebooks/notebook7d8f915b5f%20%281%29.ipynb) contains the pretrained CompressAI feasibility check (cell 5), the frozen-model setup and uncompressed validation check (cells 9–10), and the full JPEG2000 calibration (cell 12).
 
-The [JPEG2000 calibration ZIP](results/jpeg2000_calibration.zip) contains `summary.json`, `per_image.csv` and `what_compression_does.png`. Its 3,576 rows cover three settings on the same ordered 1,192-image validation split.
+The [JPEG2000 calibration folder](results/jpeg2000_calibration/) includes the [summary](results/jpeg2000_calibration/summary.json), [per-image measurements](results/jpeg2000_calibration/per_image.csv), and [reconstruction examples](results/jpeg2000_calibration/what_compression_does.png). The CSV has 3,576 rows across three settings on the same ordered 1,192-image validation split.
 
 | Target bpp | JPEG2000 mean actual bpp | Mean PSNR (dB) | Mean MS-SSIM |
 |---:|---:|---:|---:|
@@ -157,7 +160,7 @@ The [JPEG2000 calibration ZIP](results/jpeg2000_calibration.zip) contains `summa
 | 0.250 | 0.249925 | 35.496 | 0.9675 |
 | 0.500 | 0.500110 | 38.492 | 0.9857 |
 
-These are **validation reconstruction results**. The ZIP contains no segmentation scores on compressed images. The 12-image pretrained CompressAI pilot was a feasibility check. Only the 0.250 bpp target was within the shared band on that subset. Both learned arms still need full-validation calibration.
+These are **validation reconstruction results**. Compressed-image segmentation is pending. The [12-image pretrained CompressAI pilot](results/feasibility/compressai_bitrate_pilot.json) was a feasibility check. The [earlier combined feasibility summary](results/feasibility/codec_feasibility_summary.json) is a historical reference. Only the 0.250 bpp target was within the shared band on that subset. Both learned arms still need full-validation calibration.
 
 ### Shared rules and parallel work
 
@@ -167,4 +170,4 @@ These are **validation reconstruction results**. The ZIP contains no segmentatio
 - **Teammate B:** Set up CompressAI and check real serialized encode/decode. Agree on the architecture, container, training budget and loss settings before full training. Save results separately in `results/learned_rd/` and `results/learned_task/`.
 - **Both:** Use the same frozen SegFormer, preprocessing and evaluation metrics. Keep local CSV/JSON/configuration files and record experiment links. Freeze the three arms before the final MSL comparison. Use train and validation for all development and checkpoint selection.
 
-See the [v1.1 protocol draft](documentation/shared_compression_protocol_v1.1.json) for the validation manifest checksum, grayscale handling, metrics and remaining decisions.
+See the [v1.1 protocol draft](shared_compression_protocol_v1.1.json) for the validation manifest checksum, grayscale handling, metrics and remaining decisions.

@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "split": "train",
+      "original": 1379,
+      "prepared": 1359,
+      "meanLabeled": 0.631
+    },
+    {
+      "split": "val",
+      "original": 184,
+      "prepared": 183,
+      "meanLabeled": 0.622
+    },
+    {
+      "split": "test_msl",
+      "original": 53,
+      "prepared": 53,
+      "meanLabeled": 0.594
+    },
+    {
+      "split": "test_mer",
+      "original": 37,
+      "prepared": 37,
+      "meanLabeled": 0.628
+    }
+  ],
+  "worstL1": 0.449
+}
