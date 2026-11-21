@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/35219070/README.md)
 # Mars Terrain Compression — Research Project
 
 ## Overview
@@ -10,7 +11,9 @@ This project compares three image-compression methods for Martian terrain imager
 
 **Primary objectives:** Compare reconstructed-image quality (PSNR, MS-SSIM) and terrain-segmentation performance (mIoU) at matched **actual bits per pixel (bpp)**.
 
-**Current status:** AI4Mars preprocessing, data verification, SegFormer training, checkpoint freezing and uncompressed baseline evaluation are complete. Compression experiments are the next phase. Cross-rover compression analysis is optional later work.
+**Current status:** Dataset preparation, SegFormer training and uncompressed baseline evaluation are complete. The new Kaggle notebook reproduced the frozen model's uncompressed validation scores. JPEG2000 bitrate and reconstruction calibration is complete on all 1,192 validation images. Compressed-image segmentation, learned-codec calibration and the final comparison are pending.
+
+**Start here:** [Shared compression protocol v1.1 draft](documentation/shared_compression_protocol_v1.1.json). It records the fixed bitrate targets and the learned-codec settings still awaiting joint sign-off.
 
 ## Project storage
 
@@ -20,7 +23,7 @@ Repository: https://github.com/hudafatimah04/mars_compression
 
 | Location | Description |
 |---|---|
-| `notebooks/` | Four notebooks: data preparation, initial SegFormer development, learning-rate pilot, final SegFormer training and evaluation |
+| `notebooks/` | Data preparation, SegFormer development and evaluation, and the new codec feasibility and calibration notebook |
 | `code/` | Shared dataset loader, model, checkpoint, deterministic training, W&B and LR-pilot utilities |
 | `configs/` | Formal learning-rate pilot configuration |
 | `splits/` | Final V3 train/validation/MSL/MER split CSVs |
@@ -28,7 +31,8 @@ Repository: https://github.com/hudafatimah04/mars_compression
 | `results` | Three candidate experiments, verification and final LR selection |
 | `results` | Official uncompressed SegFormer test results |
 | `baseline_final_eval_cell.py` | Archived final baseline evaluation code; do not rerun completed tests |
-| `shared_compression_protocol_PROPOSED.json` | Proposed bitrate and metric agreement, not yet approved |
+| [Shared protocol v1.1 draft](documentation/shared_compression_protocol_v1.1.json) | Current bitrate, byte accounting, validation and evaluation rules |
+| [JPEG2000 validation calibration ZIP](results/jpeg2000_calibration.zip) | Per-image results, summary and reconstruction examples |
 
 The repository also includes the **PRD**, **teammate handover** and **technical roadmap**.
 
@@ -141,20 +145,26 @@ Baseline W&B run: https://wandb.ai/hudafatimah-04-rv-college-of-engineering/mars
 
 ## Compression experiments
 
-**Teammate A:** JPEG2000 compression, reconstructed-image evaluation and frozen-SegFormer inference.
+### Validation checks and bitrate calibration
 
-**Teammate B:** CompressAI reconstruction-only and task-aware training, encoding/decoding, reconstruction metrics and frozen-SegFormer evaluation.
+The [Kaggle notebook](notebooks/notebook7d8f915b5f%20%281%29.ipynb) contains the pretrained CompressAI feasibility check (cell 5), the frozen-model setup and uncompressed validation check (cells 9–10), and the full JPEG2000 calibration (cell 12).
 
-**Both teammates must agree before production runs** on the input-channel policy, codec architecture, metric implementations, byte accounting and bitrate targets.
+The [JPEG2000 calibration ZIP](results/jpeg2000_calibration.zip) contains `summary.json`, `per_image.csv` and `what_compression_does.png`. Its 3,576 rows cover three settings on the same ordered 1,192-image validation split.
 
-Proposed bitrate targets: **0.125, 0.25 and 0.5 bpp** — not yet locked.
+| Target bpp | JPEG2000 mean actual bpp | Mean PSNR (dB) | Mean MS-SSIM |
+|---:|---:|---:|---:|
+| 0.125 | 0.124926 | 33.107 | 0.9356 |
+| 0.250 | 0.249925 | 35.496 | 0.9675 |
+| 0.500 | 0.500110 | 38.492 | 0.9857 |
 
-Actual bpp is calculated using the full decodable compressed bitstream:
+These are **validation reconstruction results**. The ZIP contains no segmentation scores on compressed images. The 12-image pretrained CompressAI pilot was a feasibility check. Only the 0.250 bpp target was within the shared band on that subset. Both learned arms still need full-validation calibration.
 
-`bpp = (8 × encoded bytes) / (512 × 512)`
+### Shared rules and parallel work
 
-Report actual bpp, PSNR, MS-SSIM, mIoU4, mIoU3 and per-class IoU. Log all experiments to **Weights & Biases** and retain local CSV/JSON/configuration files.
+- **Fixed targets:** 0.125, 0.250 and 0.500 bpp. Each arm must reach within **±5% of the target mean actual bpp** on the same ordered validation list. Report achieved bpp.
+- **Byte accounting:** `actual_bpp = 8 × total_decodable_bytes / (512 × 512)`. Count the complete raw J2K codestream or complete serialized learned payload.
+- **Teammate A:** Run the frozen SegFormer on JPEG2000 reconstructions at the calibrated settings. Save results in `results/jpeg2000/`.
+- **Teammate B:** Set up CompressAI and check real serialized encode/decode. Agree on the architecture, container, training budget and loss settings before full training. Save results separately in `results/learned_rd/` and `results/learned_task/`.
+- **Both:** Use the same frozen SegFormer, preprocessing and evaluation metrics. Keep local CSV/JSON/configuration files and record experiment links. Freeze the three arms before the final MSL comparison. Use train and validation for all development and checkpoint selection.
 
-**Important:** Development and checkpoint selection must use only the approved Curiosity train/validation partitions. Final compression testing occurs only after the protocol is frozen. MER compression evaluation remains optional.
-
-Read the PRD and teammate handover before implementing new codec experiments.
+See the [v1.1 protocol draft](documentation/shared_compression_protocol_v1.1.json) for the validation manifest checksum, grayscale handling, metrics and remaining decisions.
