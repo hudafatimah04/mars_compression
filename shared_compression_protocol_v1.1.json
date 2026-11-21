@@ -1,0 +1,390 @@
+{
+  "protocol_version": "v1.1-draft",
+  "status": "Teammate-review draft, 22 November 2026. Carries forward the bitrate and accounting rules recorded as fixed by Teammate A in v1.0. Proposed learned-codec settings and implementation decisions require joint sign-off before production training or final testing.",
+  "targets": {
+    "bpp": [
+      0.125,
+      0.25,
+      0.5
+    ],
+    "bytes_per_512x512_image_mean": [
+      4096,
+      8192,
+      16384
+    ],
+    "optional_dropped": "1.0 bpp (not used)"
+  },
+  "matching": {
+    "criterion": "mean actual bpp over the 1,192 validation images within +/-5% of target",
+    "budget_meaning": "mean target, not a per-image cap",
+    "jpeg2000_calibrated_to": "Calibration goal: ±1% on full validation; worst observed absolute deviation 0.058946%. The shared acceptance band is ±5% for each arm.",
+    "inclusive_bpp_bands": {
+      "0.125": [
+        0.11875,
+        0.13125
+      ],
+      "0.25": [
+        0.2375,
+        0.2625
+      ],
+      "0.5": [
+        0.475,
+        0.525
+      ]
+    },
+    "mean_rule": "Arithmetic mean of per-image actual bpp over the same ordered manifest. Assess against band using unrounded values.",
+    "interpretation": "Passing the target band does not make methods equal-rate. Report each achieved mean and its target deviation; show residual differences. Do not present differences at a mismatched operating point as an equal-rate advantage.",
+    "test_rate_drift": "Report measured test bpp and flag any out-of-band test operating point. Keep the frozen setting; no tuning on test."
+  },
+  "bitrate": {
+    "formula": "actual_bpp = 8 * total_decodable_bytes / (512*512)",
+    "jpeg2000_bytes_counted": "entire raw J2K codestream (no JP2 wrapper)",
+    "learned_bytes_counted": "Count the complete actual serialized image payload necessary to decode it, including identifiers or version fields present per image, dimensions, latent shape, stream counts and lengths, all entropy-coded streams, and any transmitted padding metadata or other side information. Measure len(blob) and decode that same blob.",
+    "not_counted": "Shared decoder software, weights and static entropy-model parameters distributed once. Include any per-image or per-payload metadata required for decoding.",
+    "forbidden": [
+      "Using estimated likelihood rate, quality index, or nominal compression ratio as reported actual bpp"
+    ]
+  },
+  "image_list": {
+    "split": "val",
+    "n": 1192,
+    "order": "row order of val.csv",
+    "id": "Path(img_512).stem",
+    "ids_sha256": "6168c46845d61bb6e6fff155de38d61258aaf185b1d4d1f35fd159df9c42fd93",
+    "csv": "data/dataset_v3_512/val.csv (or the byte-equivalent prepared manifest on Kaggle)",
+    "hash_recipe": "sha256(\"\\n\".join(ids).encode(\"utf-8\")).hexdigest(); exactly one LF between stems, no final LF. Check 1,192 unique stems and verify exact row order for every target and arm."
+  },
+  "image_domain": {
+    "source": "512x512 8-bit grayscale PNG",
+    "jpeg2000_input": "1 channel",
+    "learned_input": "grayscale repeated to 3 channels, values in [0,1]",
+    "learned_output": "Clamp reconstructed RGB to [0,1], take the arithmetic mean of the 3 channels, multiply by 255, round to nearest with torch.round, cast to uint8. Check shape 512x512.",
+    "segformer_input": "From the same decoded grayscale uint8 used for reconstruction metrics: convert to float32 and divide by 255 before passing to SegWrap; the wrapper normalizes as (x - 0.449) / 0.226, repeats to 3 channels and bilinearly upsamples logits with align_corners=False. Do not normalize or repeat twice."
+  },
+  "metrics": {
+    "psnr": "Per image: uint8 original versus uint8 decoded, float64 MSE over all pixels, 10*log10(255^2/MSE). Arithmetic mean of per-image PSNR; identical pairs have +Infinity. See serialization convention below.",
+    "ms_ssim": "pytorch_msssim.ms_ssim(x, y, data_range=255, size_average=True), float32 tensors [1,1,512,512] holding 0-255 values, library defaults, mean over images",
+    "segmentation": "Use frozen SegFormer in eval mode and the archived code/mars_common.py evaluate path, including its autocast policy. Keep original masks and label encoding; exclude 255. Accumulate confusion over the complete split before calculating metrics. The evaluator uses pixacc internally; export it as pixel_accuracy.",
+    "reported": [
+      "miou4",
+      "miou3",
+      "pixel_accuracy",
+      "iou_soil",
+      "iou_bedrock",
+      "iou_sand",
+      "iou_bigrock",
+      "precision",
+      "recall"
+    ],
+    "ms_ssim_note": "Record and pin the same installed pytorch-msssim version for all production runs. The calibration notebook did not save its version number.",
+    "class_order": [
+      "soil",
+      "bedrock",
+      "sand",
+      "big rock"
+    ],
+    "miou3_classes": [
+      "soil",
+      "bedrock",
+      "sand"
+    ],
+    "json_nonfinite_proposed": "Represent positive-infinite PSNR as the string \"+Infinity\" in JSON or CSV, and missing/undefined results as null in JSON or blank in CSV. Record the number of exact reconstructions. Verify this convention before the first joint run."
+  },
+  "frozen_segformer": {
+    "checkpoint": "checkpoints/baseline/frozen_best_epoch16.pt",
+    "sha256": "afb9b155e07c617ab69cfa29455beda9318605b0afcec81e07f558a48bcbbda6",
+    "epoch": 16,
+    "iteration": 19600,
+    "val_miou4": 0.838503,
+    "val_miou3": 0.935317,
+    "config_hash": "2e177076344b5638",
+    "evaluator": "backups/backup_baseline_final_evaluated.zip -> code/mars_common.py",
+    "preflight": "Verify checkpoint SHA256, epoch and iteration; instantiate SegWrap(pretrained=None), load state[\"model\"] with strict=True, and reproduce the saved uncompressed validation scores before evaluating decoded images. The notebook reproduced mIoU4 0.838503 and mIoU3 0.935317."
+  },
+  "splits_use": {
+    "train": "train learned codecs",
+    "val": "calibration, tuning, checkpoint selection",
+    "test_msl": "One final MSL comparison after settings, manifests and all operating points are frozen. Do not recalibrate or select models using MSL test scores or bpp. Use the saved uncompressed MSL baseline in the same archive as the reference.",
+    "test_mer": "Unused"
+  },
+  "failure_policy": {
+    "fixed": "Record every expected ID and all available bytes; document encode, decode and shape failures; never drop a failed sample silently.",
+    "proposed_acceptance_rule": "A target is eligible for a matched comparison only with complete encode/decode coverage on the identical ordered manifest. Flag incomplete runs and mark metrics computed over successful images as diagnostic only. Retain failure evidence and agree on any correction before rerunning."
+  },
+  "method_names": [
+    "jpeg2000",
+    "learned_rd",
+    "learned_task"
+  ],
+  "per_image_csv_columns": [
+    "method",
+    "codec_id",
+    "checkpoint_sha256",
+    "split",
+    "image_id",
+    "target_bpp",
+    "actual_bpp",
+    "encoded_bytes",
+    "psnr_db",
+    "ms_ssim",
+    "decoded_ok",
+    "eval_protocol_version"
+  ],
+  "summary_columns": [
+    "method",
+    "codec_id",
+    "checkpoint_sha256",
+    "split",
+    "n_images",
+    "target_bpp",
+    "mean_actual_bpp",
+    "mean_psnr_db",
+    "mean_ms_ssim",
+    "miou4",
+    "miou3",
+    "pixel_accuracy",
+    "iou_soil",
+    "iou_bedrock",
+    "iou_sand",
+    "iou_bigrock",
+    "eval_protocol_version",
+    "wandb_run_url"
+  ],
+  "file_layout": "results/{method}/{split}/bpp_{target}/{per_image.csv, summary.json, confusion.json}",
+  "jpeg2000_reference_validation": {
+    "codec_id": "pillow13.0.0-openjpeg2.5.4-irreversible97-rates-rawJ2K",
+    "wavelet": "irreversible 9/7",
+    "rate_mode": "per-image rate control (quality_mode=rates, 1 layer)",
+    "n_val": 1192,
+    "targets": {
+      "0.125": {
+        "target_bytes": 4096,
+        "ratio_param": 62.987790515075375,
+        "mean_actual_bpp": 0.12492631745818478,
+        "deviation_pct": -0.059,
+        "per_image_bpp_std": 0.0024,
+        "per_image_bpp_min": 0.1138,
+        "per_image_bpp_max": 0.1275,
+        "pct_images_within_5pct": 97.65,
+        "mean_psnr_db": 33.107,
+        "mean_ms_ssim": 0.9356,
+        "decode_failures": 0
+      },
+      "0.25": {
+        "target_bytes": 8192,
+        "ratio_param": 31.709563442211056,
+        "mean_actual_bpp": 0.24992526777638685,
+        "deviation_pct": -0.03,
+        "per_image_bpp_std": 0.0027,
+        "per_image_bpp_min": 0.2383,
+        "per_image_bpp_max": 0.2528,
+        "pct_images_within_5pct": 100,
+        "mean_psnr_db": 35.496,
+        "mean_ms_ssim": 0.9675,
+        "decode_failures": 0
+      },
+      "0.5": {
+        "target_bytes": 16384,
+        "ratio_param": 15.909363713096734,
+        "mean_actual_bpp": 0.5001103702007524,
+        "deviation_pct": 0.022,
+        "per_image_bpp_std": 0.0029,
+        "per_image_bpp_min": 0.4828,
+        "per_image_bpp_max": 0.5034,
+        "pct_images_within_5pct": 100,
+        "mean_psnr_db": 38.492,
+        "mean_ms_ssim": 0.9857,
+        "decode_failures": 0
+      }
+    },
+    "note": "Full-validation calibration of rate and reconstruction metrics only. No compressed segmentation metrics or final test results in this archive. Raw J2K bpp comes from encoded_bytes. The separately encoded JP2 measurements are diagnostics.",
+    "encoder_options": {
+      "format": "JPEG2000",
+      "quality_mode": "rates",
+      "quality_layers": "one element: exact ratio for the target",
+      "irreversible": true,
+      "no_jp2": true,
+      "input_mode": "L"
+    },
+    "evidence": "jpeg2000_calibration.zip -> per_image.csv, summary.json, what_compression_does.png. Verified 3,576 rows, exactly the local val.csv ID order at every rate, byte-to-bpp arithmetic, summary aggregates and zero decode failures. Archived CSV remains tagged v1.0-draft.",
+    "verification_limit": "The ZIP contains the metrics and a comparison PNG, but no raw J2K payloads. The review checked stored decode flags and aggregates; independent decoding and recomputing image metrics would require re-encoding or saved bitstreams. The figure?s 262,144-byte original label is the raw pixel payload, not the PNG file size.",
+    "versions_to_record": "Pin Pillow 13.0.0 and OpenJPEG 2.5.4 for reproducing the archived baseline. Record the MS-SSIM version and software environment in new runs."
+  },
+  "pretrained_compressai_pilot": {
+    "architecture": "bmshj2018_factorized (feasibility only)",
+    "closest_quality_vs_target": {
+      "0.125": "quality 2, -9.2%",
+      "0.25": "quality 4, +3.8%",
+      "0.5": "quality 6, +12.3%"
+    },
+    "consequence": "Only 0.250 bpp passes the band on this 12-image pilot. The discrete presets bracket the targets, but they are not production operating points. Calibrate each learned arm on the complete validation manifest using real serialized payloads. Training or fine-tuning with a lambda sweep is a proposed route; the pilot does not establish a lambda mapping or require a particular architecture.",
+    "versions": {
+      "python": "3.13.18",
+      "numpy": "2.1.3",
+      "torch": "2.11.0+cpu",
+      "compressai": "1.2.8"
+    },
+    "results": [
+      {
+        "quality": 1,
+        "mean_bpp": 0.07490030924479167,
+        "mean_psnr_db": 32.60186498814753,
+        "min_bpp": 0.0614013671875,
+        "max_bpp": 0.1163330078125
+      },
+      {
+        "quality": 2,
+        "mean_bpp": 0.113555908203125,
+        "mean_psnr_db": 33.65227024252125,
+        "min_bpp": 0.0853271484375,
+        "max_bpp": 0.1839599609375
+      },
+      {
+        "quality": 3,
+        "mean_bpp": 0.170867919921875,
+        "mean_psnr_db": 34.80528424794014,
+        "min_bpp": 0.1199951171875,
+        "max_bpp": 0.2841796875
+      },
+      {
+        "quality": 4,
+        "mean_bpp": 0.2594095865885417,
+        "mean_psnr_db": 36.21510239488977,
+        "min_bpp": 0.1715087890625,
+        "max_bpp": 0.431396484375
+      },
+      {
+        "quality": 5,
+        "mean_bpp": 0.3878682454427083,
+        "mean_psnr_db": 37.75345024531965,
+        "min_bpp": 0.2503662109375,
+        "max_bpp": 0.62548828125
+      },
+      {
+        "quality": 6,
+        "mean_bpp": 0.561279296875,
+        "mean_psnr_db": 39.35582770279158,
+        "min_bpp": 0.361083984375,
+        "max_bpp": 0.874267578125
+      },
+      {
+        "quality": 7,
+        "mean_bpp": 0.8093058268229166,
+        "mean_psnr_db": 41.3016306414948,
+        "min_bpp": 0.5211181640625,
+        "max_bpp": 1.2100830078125
+      },
+      {
+        "quality": 8,
+        "mean_bpp": 1.1355997721354167,
+        "mean_psnr_db": 43.40700505023827,
+        "min_bpp": 0.7457275390625,
+        "max_bpp": 1.62744140625
+      }
+    ],
+    "n": 12,
+    "seed": 42,
+    "closest_verified": [
+      {
+        "target_bpp": 0.125,
+        "quality": 2,
+        "mean_actual_bpp": 0.113555908203125,
+        "deviation_pct": -9.1552734375,
+        "within_5pct": false
+      },
+      {
+        "target_bpp": 0.25,
+        "quality": 4,
+        "mean_actual_bpp": 0.2594095865885417,
+        "deviation_pct": 3.763834635416674,
+        "within_5pct": true
+      },
+      {
+        "target_bpp": 0.5,
+        "quality": 6,
+        "mean_actual_bpp": 0.561279296875,
+        "deviation_pct": 12.255859375,
+        "within_5pct": false
+      }
+    ],
+    "scope": "12 validation images, pretrained MSE models at qualities 1–8, no training, PSNR and actual bpp only. The saved aggregate has no per-image list. Notebook cell 5 tests serialization and decode with pilot MCP1 framing; this is a reference for, not a fixed choice of, the production container."
+  },
+  "version_history": [
+    "v1.0: Teammate A recorded the shared targets, matching rule and evaluation basis.",
+    "v1.1-draft: verified calibration evidence, clarified reproducibility and reporting rules, and added the learned-codec handoff and pending decisions. Preserve the original and version any agreed change."
+  ],
+  "method_owners": {
+    "jpeg2000": "Teammate A (Huda)",
+    "learned_rd": "Teammate B",
+    "learned_task": "Teammate B",
+    "protocol_and_final_review": "Both teammates"
+  },
+  "dataset": {
+    "name": "AI4Mars merged v0.6, prepared grayscale",
+    "frozen_split": "splits/split_v3_FROZEN.json",
+    "frozen_split_sha256": "80015f2004fdb39308201f1439aec6dee0352150eb2333131a9da687fac6c9da",
+    "train_images": 9803,
+    "validation_images": 1192,
+    "test_msl_images": 311,
+    "labels": {
+      "soil": 0,
+      "bedrock": 1,
+      "sand": 2,
+      "big_rock": 3,
+      "ignore": 255
+    }
+  },
+  "output_contract": {
+    "checkpoint_sha256": "Learned codec checkpoint SHA256; null or blank for JPEG2000 in new conformant outputs. The historical calibration CSV used a human-readable N/A string.",
+    "frozen_evaluator_hash": "Include segformer_sha256 in run metadata and any summary with segmentation results; keep it distinct from the learned codec hash.",
+    "confusion": "Save a 4x4 matrix with rows=true, columns=predicted, plus class order and labeled pixel count. Include per-class precision and recall as arrays or explicit fields.",
+    "required_run_metadata": [
+      "settings and random seeds",
+      "software/library versions",
+      "ordered manifest hash",
+      "received byte accounting and serialization version",
+      "checkpoint-selection rule and actual bitrate",
+      "failure counts",
+      "frozen evaluator hash if used"
+    ],
+    "companion_artifacts": [
+      "config.json",
+      "per_image.csv",
+      "summary.json",
+      "confusion.json when segmentation is measured",
+      "preselected validation reconstructions where useful"
+    ],
+    "tracking": "Local CSV/JSON is authoritative. Attach W&B run link when available; agree on the shared project and access."
+  },
+  "learned_codec_plan": {
+    "status": "Proposal for joint sign-off",
+    "controlled_comparison": "Same architecture, matched starting weights per rate and comparable training budget, preprocessing, seeds and reconstruction objective across learned_rd and learned_task. Clearly record any deviations. If task-aware starts from a trained learned_rd checkpoint, plan an equally continued reconstruction control or explicitly agree on the confound.",
+    "reconstruction_only": "Train rate plus reconstruction distortion on train images.",
+    "task_aware": "Use the same rate and distortion definitions, plus weighted segmentation cross-entropy with ignore_index=255. Set the frozen evaluator to eval mode, disable parameter gradients and retain gradient flow to the codec output. Use differentiable grayscale conversion during training; do not hard-round the task path unless using a documented gradient estimator. Use the fixed rounded uint8 rule for evaluation.",
+    "calibration": [
+      "Smoke-test a true decode of serialized bytes, verifying shape, range and channel conversion.",
+      "Train or adapt on train only. Use validation to select codec configuration, checkpoints and rate-control candidates. Likelihood-based rate may be used as a training proxy.",
+      "For each arm and target, measure actual per-image bytes on the ordered full validation split and record reconstruction and frozen-evaluator scores. Reject unmatched settings as matched points.",
+      "Freeze the chosen settings, checkpoints and manifest before the final MSL test. Report test rate drift without tuning."
+    ],
+    "confirm_before_production": [
+      "CompressAI architecture, library versions and initial checkpoint provenance",
+      "Production container format and serialization schema, including decoder metadata",
+      "Common distortion objective, optimizer, batch size, training budget and paired seeds",
+      "Lambda candidate ranges, validation checkpoint selection and task loss weighting",
+      "MS-SSIM package version, completeness/failure policy, and tracking project"
+    ]
+  },
+  "evidence_and_reuse": [
+    "Older 40-image JPEG2000 aggregate in bit rate feasibility test/codec_feasibility_summary.json was useful for an initial sanity check; the full-validation calibration supersedes it as the JPEG2000 rate reference. Its sample IDs were not saved in the summary.",
+    "Kaggle notebook cells 2–5 checked dependencies and ran a useful pretrained feasibility screen. Cells 6–7 copied earlier evidence and drafted policy; they did not run a new comparison.",
+    "Cells 8–10 staged the data and frozen evaluator and reproduced the uncompressed validation metrics. The prediction gallery is optional for calibration. Cell 9 handled extracted Kaggle inputs; use an explicit verified dataset/model path instead of relying on the first glob match.",
+    "Cell 12 performed the necessary empirical validation-rate calibration for JPEG2000. A subset search saves compute; full validation is the comparability check. JP2 diagnostics, graphics, and re-encoding for display are optional.",
+    "No production learned-codec training or compressed SegFormer comparison is evidenced by these files. Do not compare the earlier 40-image JPEG2000 and 12-image CompressAI PSNRs as a codec ranking."
+  ],
+  "approval": {
+    "teammate_a": "v1.0 numerical targets recorded as fixed; review v1.1 additions",
+    "teammate_b": "Pending acknowledgment and joint settings review",
+    "production_ready": false
+  }
+}
